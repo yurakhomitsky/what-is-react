@@ -1,0 +1,25 @@
+.header {
+  margin-bottom: 10px;
+}
+
+.logo {
+  display: block;
+  width: 90px;
+  height: 90px;
+}
+.clock {
+  border: 1px solid black;
+  border-radius: 10px;
+  font-size: 16px;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+.lot {
+  padding: 5px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid black;
+}
+.price {
+  text-align: end;
+}
