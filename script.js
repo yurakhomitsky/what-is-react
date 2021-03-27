@@ -38,7 +38,7 @@ const stream = {
           id: normalizedId,
           price: Math.round(Math.random() * 10 + 30)
         });
-      }, 400);
+      }, 2000);
     }
   }
 };
@@ -144,6 +144,7 @@ function Lots({ lots }) {
 function Lot({ lot }) {
   const article = document.createElement('article');
   article.className = 'lot';
+  article.dataset.key = lot.id;
 
   const price = document.createElement('div');
   price.className = 'price';
@@ -180,15 +181,98 @@ function renderView(state) {
   render(App({ state }), document.getElementById('root'));
 }
 
-function render(newDom, root) {
-  root.innerHTML = '';
-  root.append(newDom);
+function render(virtualDom, realDomRoot) {
+  // add parent root element for virtual
+  // virtual#app real#root -> virtual#root -> virtual#app
+  const virtualDomRoot = document.createElement(realDomRoot.tagName);
+  virtualDomRoot.id = realDomRoot.id;
+  virtualDomRoot.append(virtualDom);
+
+  sync(virtualDomRoot, realDomRoot);
+}
+
+function sync(virtualNode, realNode) {
+  // Sync element
+  if (virtualNode.id !== realNode.id) {
+    realNode.id = virtualNode.id;
+  }
+
+  if (virtualNode.className !== realNode.className) {
+    realNode.className = virtualNode.className;
+  }
+
+  if (virtualNode.attributes) {
+    Array.from(virtualNode.attributes).forEach((attr) => {
+      realNode[attr.name] = attr.value;
+    });
+  }
+
+  if (virtualNode.dataset) {
+    Object.keys(virtualNode.dataset).forEach((key) => {
+      realNode.dataset[key] = virtualNode.dataset[key];
+    });
+  }
+
+  if (virtualNode.nodeValue !== realNode.nodeValue) {
+    realNode.nodeValue = virtualNode.nodeValue;
+  }
+
+  // Sync child nodes
+  const virtualChildren = virtualNode.childNodes;
+  const realChildren = realNode.childNodes;
+
+  // loop through children nodes
+  for (let i = 0; i < virtualChildren.length || i < realChildren.length; i++) {
+    // TODO: Implement removing nodes comparing by key
+    const virtual = virtualChildren[i];
+    const real = realChildren[i];
+
+    // Remove
+    // if we have real node for which we don't have virtual then
+    // we remove that node from real
+    if (!virtual && real) {
+      realNode.remove(real);
+    }
+
+    if (virtual && real) {
+      // Update
+      // If we have same tagName then we need to sync attributes or properties
+      if (virtual.tagName === real.tagName) {
+        sync(virtual, real);
+      }
+
+      // Replace
+      if (virtual.tagName !== real.tagName) {
+        const newRealNode = createRealNodeByVirtual(virtual);
+        sync(virtual, newRealNode);
+        realNode.replaceChild(newRealNode, real);
+      }
+    }
+
+    // Add
+    // If in virtual we have nodes but in real we don't have them
+    // then we creating nodes from virtual and append to the real one
+    if (virtual && !real) {
+      const newRealNode = createRealNodeByVirtual(virtual);
+      sync(virtual, newRealNode);
+      realNode.appendChild(newRealNode);
+    }
+  }
+}
+
+function createRealNodeByVirtual(virtual) {
+  // if virtual node has TEXT_NODE type then
+  // we need create approporiate node for it
+  if (virtual.nodeType === Node.TEXT_NODE) {
+    return document.createTextNode('');
+  }
+  return document.createElement(virtual.tagName);
 }
 
 // Init app
 renderView(state);
 
-// Change Clock time
+// // Change Clock time
 setInterval(() => {
   state = {
     ...state,
