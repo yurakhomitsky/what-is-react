@@ -1,31 +1,6 @@
-// Helpers
-const api = {
-  get(url) {
-    switch (url) {
-      case '/lots':
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            resolve([
-              {
-                id: 1,
-                name: 'Apple',
-                description: 'Apple description',
-                price: 16
-              },
-              {
-                id: 2,
-                name: 'Orange',
-                description: 'Orange descriptions',
-                price: 4
-              }
-            ]);
-          }, 2000);
-        });
-      default:
-        throw new Error('Unknown address');
-    }
-  }
-};
+import { Api } from './services/Api.js';
+import { VDom } from './services/VDom.js';
+import { App } from './containers/App.js';
 
 const stream = {
   subscribe(channel, listener) {
@@ -68,157 +43,77 @@ let state = {
   lots: null
 };
 
-// Components
-/**
- * Returns header component and append logo component
- * @return { HTMLElement } header component
- */
-function Header() {
-  const header = document.createElement('header');
-  header.className = 'header';
-  header.append(Logo());
-
-  return header;
-}
-
-/**
- * Returns logo component
- * @return { HTMLImageElement } clock component
- */
-function Logo() {
-  const logo = document.createElement('img');
-  logo.className = 'logo';
-  logo.src = 'logo.png';
-  return logo;
-}
-
-/**
- * Returns clock component
- * @param { object } { time }
- * @return { HTMLDivElement } clock component
- */
-function Clock({ time }) {
-  const clock = document.createElement('div');
-  clock.className = 'clock';
-  clock.innerText = time.toLocaleTimeString();
-  return clock;
-}
-
-/**
- * Returns loading component
- * @return { HTMLDivElement } loading component
- */
-function Loading() {
-  const node = document.createElement('div');
-  node.className = 'loading';
-  node.innerText = 'Loading...';
-  return node;
-}
-
-/**
- * Returns list of lot components
- * Shows loading component if there are no lots
- * @param { array } { lots }
- * @return { HTMLDivElement } list of lots components
- */
-function Lots({ lots }) {
-  const list = document.createElement('div');
-
-  if (!lots || (Array.isArray(lots) && !lots.length)) {
-    return Loading();
-  }
-
-  list.className = 'lots';
-
-  lots.forEach((lot) => {
-    list.append(Lot({ lot }));
-  });
-  return list;
-}
-
-/**
- * Returns single lot component
- * @param { object } { lot }
- * @return { HTMLElement } lot component
- */
-function Lot({ lot }) {
-  const article = document.createElement('article');
-  article.className = 'lot';
-  article.dataset.key = lot.id;
-
-  const price = document.createElement('div');
-  price.className = 'price';
-  price.innerText = lot.price;
-  article.append(price);
-
-  const name = document.createElement('h1');
-  name.innerText = lot.name;
-  article.append(name);
-
-  const description = document.createElement('p');
-  description.innerText = lot.description;
-  article.append(description);
-
-  return article;
-}
-
-/**
- * Creates container and append components that needs to be rendered
- * @param {object} { state of app}
- * @return {HTMLDivElement } App with components
- */
-function App({ state }) {
-  const app = document.createElement('div');
-  app.className = 'app';
-  app.append(Header());
-  app.append(Clock({ time: state.time }));
-  app.append(Lots({ lots: state.lots }));
-  return app;
-}
-
 // Application methods
 function renderView(state) {
-  render(App({ state }), document.getElementById('root'));
+  render(VDom.createElement(App, { state }), document.getElementById('root'));
 }
 
 function render(virtualDom, realDomRoot) {
   // add parent root element for virtual
   // virtual#app real#root -> virtual#root -> virtual#app
-  const virtualDomRoot = document.createElement(realDomRoot.tagName);
-  virtualDomRoot.id = realDomRoot.id;
-  virtualDomRoot.append(virtualDom);
+  const evaluatedVirtualDom = evaluate(virtualDom);
+
+  const virtualDomRoot = {
+    type: realDomRoot.tagName.toLowerCase(),
+    props: {
+      id: realDomRoot.id,
+      ...realDomRoot.attributes,
+      children: [evaluatedVirtualDom]
+    }
+  };
 
   sync(virtualDomRoot, realDomRoot);
 }
 
+function evaluate(virtualNode) {
+  // if node is string, number etc we just return that node
+  if (typeof virtualNode !== 'object') {
+    return virtualNode;
+  }
+
+  // virtualNode is object
+  const { type, props = {} } = virtualNode;
+
+  if (typeof type === 'function') {
+    return evaluate(type(props));
+  }
+
+  const children = Array.isArray(props.children) ? props.children.map(evaluate) : [evaluate(props.children)];
+
+  return {
+    ...virtualNode,
+    props: {
+      ...props,
+      children
+    }
+  };
+}
+
 function sync(virtualNode, realNode) {
-  // Sync element
-  if (virtualNode.id !== realNode.id) {
-    realNode.id = virtualNode.id;
-  }
+  const { key, props = {} } = virtualNode;
+  const hasPropertiesInProps = !!Object.keys(props).length;
 
-  if (virtualNode.className !== realNode.className) {
-    realNode.className = virtualNode.className;
-  }
+  if (hasPropertiesInProps) {
+    Object.entries(props).forEach(([name, value]) => {
+      // we don't want to pass children array or key propertie to node
+      if (name === 'children' || name === 'key') return;
 
-  if (virtualNode.attributes) {
-    Array.from(virtualNode.attributes).forEach((attr) => {
-      realNode[attr.name] = attr.value;
+      if (realNode[name] !== value) {
+        realNode[name] = value;
+      }
     });
   }
 
-  if (virtualNode.dataset) {
-    Object.keys(virtualNode.dataset).forEach((key) => {
-      realNode.dataset[key] = virtualNode.dataset[key];
-    });
+  if (key) {
+    realNode.dataset.key = key;
   }
 
-  if (virtualNode.nodeValue !== realNode.nodeValue) {
-    realNode.nodeValue = virtualNode.nodeValue;
+  if (typeof virtualNode !== 'object' && virtualNode !== realNode.nodeValue) {
+    realNode.nodeValue = virtualNode;
   }
 
   // Sync child nodes
-  const virtualChildren = virtualNode.childNodes;
+  const virtualChildren = hasPropertiesInProps ? props.children || [] : [];
   const realChildren = realNode.childNodes;
 
   // loop through children nodes
@@ -237,12 +132,12 @@ function sync(virtualNode, realNode) {
     if (virtual && real) {
       // Update
       // If we have same tagName then we need to sync attributes or properties
-      if (virtual.tagName === real.tagName) {
+      if ((virtual.type || '') === (real.tagName || '').toLowerCase()) {
         sync(virtual, real);
       }
 
       // Replace
-      if (virtual.tagName !== real.tagName) {
+      if ((virtual.type || '') !== (real.tagName || '').toLowerCase()) {
         const newRealNode = createRealNodeByVirtual(virtual);
         sync(virtual, newRealNode);
         realNode.replaceChild(newRealNode, real);
@@ -261,12 +156,10 @@ function sync(virtualNode, realNode) {
 }
 
 function createRealNodeByVirtual(virtual) {
-  // if virtual node has TEXT_NODE type then
-  // we need create approporiate node for it
-  if (virtual.nodeType === Node.TEXT_NODE) {
-    return document.createTextNode('');
+  if (typeof virtual !== 'object') {
+    return document.createTextNode(virtual);
   }
-  return document.createElement(virtual.tagName);
+  return document.createElement(virtual.type);
 }
 
 // Init app
@@ -280,16 +173,10 @@ setInterval(() => {
   };
 
   renderView(state);
-  // Alternative way to replace Clock component instead re-render whole app
-
-  // const time = new Date();
-  // const clock = domRoot.querySelector('.clock');
-  // const newClock = Clock({ time });
-  // clock.replaceWith(newClock);
 }, 1000);
 
 // Fetch lots
-api.get('/lots').then((lots) => {
+Api.get('/lots').then((lots) => {
   state = {
     ...state,
     lots
