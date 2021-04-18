@@ -6,11 +6,11 @@ import { Logo } from './Logo.js';
  * @return { HTMLElement } header component
  */
 export function Header() {
-  return VDom.createElement(
+  return React.createElement(
     'header',
     {
       className: 'header'
     },
-    VDom.createElement(Logo)
+    React.createElement(Logo)
   );
 }

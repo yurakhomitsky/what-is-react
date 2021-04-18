@@ -6,5 +6,5 @@ import { VDom } from '../services/VDom.js';
  * @return { HTMLDivElement } clock component
  */
 export function Clock({ time }) {
-  return VDom.createElement('div', { className: 'clock' }, time.toLocaleTimeString());
+  return React.createElement('div', { className: 'clock' }, time.toLocaleTimeString());
 }

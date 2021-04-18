@@ -9,10 +9,10 @@ import { Lot } from './Lot.js';
  */
 export function Lots({ lots }) {
   if (!lots || (Array.isArray(lots) && !lots.length)) {
-    return VDom.createElement(Loading);
+    return React.createElement(Loading);
   }
 
-  const lotsElements = lots.map((lot) => VDom.createElement(Lot, { lot, key: lot.id }));
+  const lotsElements = lots.map((lot) => React.createElement(Lot, { lot, key: lot.id }));
 
-  return VDom.createElement('div', { className: 'lots' }, lotsElements);
+  return React.createElement('div', { className: 'lots' }, lotsElements);
 }

@@ -1,8 +1,12 @@
 {
     "env": {
         "browser": true,
-        "es6": true
+        "es6": true,
+        "react": true
     },
+    "plugins": [
+        "react"
+    ],
     "extends": [
         "eslint:recommended",
         "google"

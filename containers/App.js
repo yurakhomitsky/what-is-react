@@ -6,11 +6,11 @@ import { Header, Clock, Lots } from '../components/index.js';
  * @return {HTMLDivElement } App with components
  */
 export function App({ state }) {
-  return VDom.createElement(
+  return React.createElement(
     'div',
     { className: 'app' },
-    VDom.createElement(Header),
-    VDom.createElement(Clock, { time: state.time }),
-    VDom.createElement(Lots, { lots: state.lots })
+    React.createElement(Header),
+    React.createElement(Clock, { time: state.time }),
+    React.createElement(Lots, { lots: state.lots })
   );
 }

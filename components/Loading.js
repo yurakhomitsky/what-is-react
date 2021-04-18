@@ -5,5 +5,5 @@ import { VDom } from '../services/VDom.js';
  * @return { HTMLDivElement } loading component
  */
 export function Loading() {
-  return VDom.createElement('div', { className: 'loading' }, 'Loading...');
+  return React.createElement('div', { className: 'loading' }, 'Loading...');
 }
