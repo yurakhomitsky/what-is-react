@@ -5,5 +5,5 @@ import { VDom } from '../services/VDom.js';
  * @return { HTMLDivElement } loading component
  */
 export function Loading() {
-  return <div className="loading">Loadin...</div>;
+  return <div className="loading">Loading...</div>;
 }

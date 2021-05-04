@@ -1,5 +1,5 @@
-// import { VDom } from '../services/VDom.js';
-// import { Header, Clock, Lots } from '../components/index.js';
+import { VDom } from '../services/VDom.js';
+import { Header, Clock, Lots } from '../components/index.js';
 /**
  * Creates container and append components that needs to be rendered
  * @param {object} { state of app}
@@ -8,10 +8,9 @@
 export function App({ state }) {
   return (
     <div className="app">
-      hello
-      {/* <Header />
+      <Header />
       <Clock time={state.time} />
-      <Lots lots={state.lots} /> */}
+      <Lots lots={state.lots} />
     </div>
   );
 }
