@@ -45,7 +45,7 @@ let state = {
 
 // Application methods
 function renderView(state) {
-  ReactDOM.render(React.createElement(App, { state }), document.getElementById('root'));
+  ReactDOM.render(<App state={state} />, document.getElementById('root'));
 }
 
 // Init app

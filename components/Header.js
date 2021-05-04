@@ -6,11 +6,9 @@ import { Logo } from './Logo.js';
  * @return { HTMLElement } header component
  */
 export function Header() {
-  return React.createElement(
-    'header',
-    {
-      className: 'header'
-    },
-    React.createElement(Logo)
+  return (
+    <header className="header">
+      <Logo />
+    </header>
   );
 }

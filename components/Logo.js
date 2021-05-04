@@ -4,8 +4,5 @@ import { VDom } from '../services/VDom.js';
  * @return { HTMLImageElement } clock component
  */
 export function Logo() {
-  return React.createElement('img', {
-    className: 'logo',
-    src: 'logo.png'
-  });
+  return <img className="logo" src="logo.png" />;
 }

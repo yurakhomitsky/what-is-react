@@ -6,11 +6,11 @@ import { VDom } from '../services/VDom.js';
  * @return { HTMLElement } lot component
  */
 export function Lot({ lot }) {
-  return React.createElement(
-    'article',
-    { className: 'lot' },
-    React.createElement('div', { className: 'price' }, lot.price),
-    React.createElement('h1', {}, lot.price),
-    React.createElement('p', {}, lot.description)
+  return (
+    <article className="lot">
+      <div className="price">{lot.price}</div>
+      <h1>{lot.name}</h1>
+      <p>{lot.description}</p>
+    </article>
   );
 }
