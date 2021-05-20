@@ -107,19 +107,18 @@ const stream = {
   }
 };
 
-
-
 // States
 const clockInitialState = {
   time: new Date()
 };
+
 function clockReducer(state = clockInitialState, action) {
-  const { type, payload } = action;
-  switch (type) {
+
+  switch (action.type) {
     case SET_TIME:
       return {
         ...state,
-        time: payload
+        time: action.time
       };
     default: return state;
   }
@@ -135,22 +134,21 @@ const CHANGE_LOT_PRICE = 'CHANGE_LOT_PRICE';
 
 
 function auctionReducer(state = auctionInitialState, action) {
-  const { type, payload } = action;
 
-  switch (type) {
+  switch (action.type) {
     case SET_LOTS:
       return {
         ...state,
-        lots: payload
+        lots: action.lots
       };
     case CHANGE_LOT_PRICE:
       return {
         ...state,
         lots: state.lots.map((lot) => {
-          if (lot.id === payload.id) {
+          if (lot.id === action.lot.id) {
             return {
               ...lot,
-              price: payload.price
+              price: action.lot.price
             };
           }
           return lot;
@@ -159,44 +157,29 @@ function auctionReducer(state = auctionInitialState, action) {
     default: return state;
   }
 }
-class Store {
-  constructor(reducer, initialState) {
-    this.reducer = reducer;
-    this.state = reducer(initialState, { type: null });
-    this.listeners = [];
-  }
 
-  getState() {
-    return this.state;
-  }
-
-  dispatch(action) {
-    this.state = this.reducer(this.state, action);
-    this.notifyListeners();
-  }
-
-  subscribe(callback) {
-    this.listeners.push(callback);
-    return () => {
-      this.listeners.filter(listener !== callback);
-    };
-  }
-
-  notifyListeners() {
-    this.listeners.forEach((callback) => callback(this.state));
-  }
-}
-
-function combineReducer(reducers) {
-  return (state = {}, action) => {
-    return Object.entries(reducers).reduce((acc, [key, reducer]) => {
-      acc[key] = reducer(state[key], action);
-      return acc;
-    }, {});
+function setTime(time) {
+  return {
+    type: SET_TIME,
+    time
   };
 }
 
-const store = new Store(combineReducer({
+function setLots(lots) {
+  return {
+    type: SET_LOTS,
+    lots
+  };
+}
+
+function changeLotPrice(lot) {
+  return {
+    type: CHANGE_LOT_PRICE,
+    lot
+  };
+}
+
+const store = Redux.createStore(Redux.combineReducers({
   clock: clockReducer,
   auction: auctionReducer
 }));
@@ -206,38 +189,21 @@ function renderView(state) {
   ReactDOM.render(<App state={state} />, document.getElementById('root'));
 }
 
-store.subscribe((state) => {
-  renderView(state);
+store.subscribe(() => {
+  renderView(store.getState());
 });
 
 // Init app
 renderView(store.getState());
 
-function setTime(time) {
-  return {
-    type: SET_TIME,
-    payload: time
-  };
-}
-
-function setLots(lots) {
-  return {
-    type: SET_LOTS,
-    payload: lots
-  };
-}
-
-function changeLotPrice(lot) {
-  return {
-    type: CHANGE_LOT_PRICE,
-    payload: lot
-  };
-}
+// setTimeout(() => {
+//   store.dispatch(setTime(new Date()));
+// }, 2500);
 
 // Change Clock time
 setInterval(() => {
   store.dispatch(setTime(new Date()));
-}, 1000);
+}, 3000);
 
 // Fetch lots
 Api.get('/lots').then((lots) => {
