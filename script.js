@@ -2,46 +2,7 @@ import { Api } from './services/Api.js';
 import { VDom } from './services/VDom.js';
 // import { App } from './containers/App.js';
 
-const stream = {
-  subscribe(channel, listener) {
-    const id = channel.split('-')[1];
-    const normalizedId = id ? Number(id) : null;
 
-    if (normalizedId) {
-      setInterval(() => {
-        listener({
-          id: normalizedId,
-          price: Math.round(Math.random() * 10 + 30)
-        });
-      }, 2000);
-    }
-  }
-};
-
-function onPrice(data) {
-  const lots = state.lots.map((lot) => {
-    if (lot.id === data.id) {
-      return {
-        ...lot,
-        price: data.price
-      };
-    }
-    return lot;
-  });
-
-  state = {
-    ...state,
-    lots
-  };
-
-  renderView(state);
-}
-
-// State
-let state = {
-  time: new Date(),
-  lots: null
-};
 
 /**
  * Returns loading component
@@ -123,41 +84,168 @@ export function App({ state }) {
   return (
     <div className="app">
       <Header />
-      <Clock time={state.time} />
-      <Lots lots={state.lots} />
+      <Clock time={state.clock.time} />
+      <Lots lots={state.auction.lots} />
     </div>
   );
 }
 
-// Application methods
+
+const stream = {
+  subscribe(channel, listener) {
+    const id = channel.split('-')[1];
+    const normalizedId = id ? Number(id) : null;
+
+    if (normalizedId) {
+      setInterval(() => {
+        listener({
+          id: normalizedId,
+          price: Math.round(Math.random() * 10 + 30)
+        });
+      }, 2000);
+    }
+  }
+};
+
+
+
+// States
+const clockInitialState = {
+  time: new Date()
+};
+function clockReducer(state = clockInitialState, action) {
+  const { type, payload } = action;
+  switch (type) {
+    case SET_TIME:
+      return {
+        ...state,
+        time: payload
+      };
+    default: return state;
+  }
+}
+
+const auctionInitialState = {
+  lots: null
+};
+
+const SET_TIME = 'SET_TIME';
+const SET_LOTS = 'SET_LOTS';
+const CHANGE_LOT_PRICE = 'CHANGE_LOT_PRICE';
+
+
+function auctionReducer(state = auctionInitialState, action) {
+  const { type, payload } = action;
+
+  switch (type) {
+    case SET_LOTS:
+      return {
+        ...state,
+        lots: payload
+      };
+    case CHANGE_LOT_PRICE:
+      return {
+        ...state,
+        lots: state.lots.map((lot) => {
+          if (lot.id === payload.id) {
+            return {
+              ...lot,
+              price: payload.price
+            };
+          }
+          return lot;
+        })
+      };
+    default: return state;
+  }
+}
+class Store {
+  constructor(reducer, initialState) {
+    this.reducer = reducer;
+    this.state = reducer(initialState, { type: null });
+    this.listeners = [];
+  }
+
+  getState() {
+    return this.state;
+  }
+
+  dispatch(action) {
+    this.state = this.reducer(this.state, action);
+    this.notifyListeners();
+  }
+
+  subscribe(callback) {
+    this.listeners.push(callback);
+    return () => {
+      this.listeners.filter(listener !== callback);
+    };
+  }
+
+  notifyListeners() {
+    this.listeners.forEach((callback) => callback(this.state));
+  }
+}
+
+function combineReducer(reducers) {
+  return (state = {}, action) => {
+    return Object.entries(reducers).reduce((acc, [key, reducer]) => {
+      acc[key] = reducer(state[key], action);
+      return acc;
+    }, {});
+  };
+}
+
+const store = new Store(combineReducer({
+  clock: clockReducer,
+  auction: auctionReducer
+}));
+
+
 function renderView(state) {
   ReactDOM.render(<App state={state} />, document.getElementById('root'));
 }
 
-// Init app
-renderView(state);
-
-// // Change Clock time
-setInterval(() => {
-  state = {
-    ...state,
-    time: new Date()
-  };
-
+store.subscribe((state) => {
   renderView(state);
+});
+
+// Init app
+renderView(store.getState());
+
+function setTime(time) {
+  return {
+    type: SET_TIME,
+    payload: time
+  };
+}
+
+function setLots(lots) {
+  return {
+    type: SET_LOTS,
+    payload: lots
+  };
+}
+
+function changeLotPrice(lot) {
+  return {
+    type: CHANGE_LOT_PRICE,
+    payload: lot
+  };
+}
+
+// Change Clock time
+setInterval(() => {
+  store.dispatch(setTime(new Date()));
 }, 1000);
 
 // Fetch lots
 Api.get('/lots').then((lots) => {
-  state = {
-    ...state,
-    lots
-  };
-
-  renderView(state);
-
+  store.dispatch(setLots(lots));
   // Simulate web-socket
   lots.forEach((lot) => {
-    stream.subscribe(`price-${lot.id}`, onPrice);
+    stream.subscribe(`price-${lot.id}`, (data) => {
+      store.dispatch(changeLotPrice({ id: data.id, price: data.price }));
+    });
   });
 });
