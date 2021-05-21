@@ -30,6 +30,33 @@ body {
   border-radius: 10px;
   border: 1px solid black;
 }
+
+button {
+  cursor: pointer;
+
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+button.favorite {
+  background: #fff;
+  border: 1px solid #999;
+  color: #000;
+}
+
+button.unfavorite {
+  background: #fff;
+  border: 1px solid #ff8c68;
+  color: #dc0000;
+}
+
+.lot.favorite {
+  border-color: #ffd7cb;
+  background-color: #ffd7cb;
+}
+
 .price {
   text-align: end;
 }

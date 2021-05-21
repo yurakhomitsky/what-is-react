@@ -46,22 +46,32 @@ export function Header() {
  * @param { object } { lot }
  * @return { HTMLElement } lot component
  */
-export function Lot({ lot }) {
+export function Lot({ lot, favorite, unFavorite }) {
+
   return (
-    <article className="lot">
+    <article className={`lot ${lot.isFavorite ? 'favorite' : ''}`}>
       <div className="price">{lot.price}</div>
       <h1>{lot.name}</h1>
       <p>{lot.description}</p>
+      <Favorite isFavorite={lot.isFavorite} favorite={favorite.bind(null, lot.id)} unFavorite={unFavorite.bind(null, lot.id)} />
     </article>
   );
 }
+
+function Favorite({ isFavorite, favorite, unFavorite }) {
+  const unFavoriteButton = <button type="button" onClick={favorite} className="unfavorite">Unfavorite</button>;
+  const favoriteButton = <button type="button" onClick={unFavorite} className="favorite">Favorite</button>;
+  return isFavorite ? favoriteButton : unFavoriteButton;
+}
+
+
 /**
  * Returns list of lot components
  * Shows loading component if there are no lots
  * @param { array } { lots }
  * @return { HTMLDivElement } list of lots components
  */
-export function Lots({ lots }) {
+export function Lots({ lots, favorite, unFavorite }) {
   if (!lots || (Array.isArray(lots) && !lots.length)) {
     return <Loading />;
   }
@@ -69,7 +79,7 @@ export function Lots({ lots }) {
   return (
     <div className="lots">
       {lots.map((lot) => (
-        <Lot lot={lot} key={lot.id} />
+        <Lot lot={lot} favorite={favorite} unFavorite={unFavorite} key={lot.id} />
       ))}
     </div>
   );
@@ -80,12 +90,12 @@ export function Lots({ lots }) {
  * @param {object} { state of app}
  * @return {HTMLDivElement } App with components
  */
-export function App({ state }) {
+export function App({ state, favorite, unFavorite }) {
   return (
     <div className="app">
       <Header />
       <Clock time={state.clock.time} />
-      <Lots lots={state.auction.lots} />
+      <Lots lots={state.auction.lots} favorite={favorite} unFavorite={unFavorite} />
     </div>
   );
 }
@@ -131,6 +141,8 @@ const auctionInitialState = {
 const SET_TIME = 'SET_TIME';
 const SET_LOTS = 'SET_LOTS';
 const CHANGE_LOT_PRICE = 'CHANGE_LOT_PRICE';
+const FAVORITE_LOT = 'FAVORITE_LOT';
+const UNFAVORITE_LOT = 'UNFAVORITE_LOT';
 
 
 function auctionReducer(state = auctionInitialState, action) {
@@ -149,6 +161,32 @@ function auctionReducer(state = auctionInitialState, action) {
             return {
               ...lot,
               price: action.lot.price
+            };
+          }
+          return lot;
+        })
+      };
+    case FAVORITE_LOT:
+      return {
+        ...state,
+        lots: state.lots.map((lot) => {
+          if (lot.id === action.id) {
+            return {
+              ...lot,
+              isFavorite: true
+            };
+          }
+          return lot;
+        })
+      };
+    case UNFAVORITE_LOT:
+      return {
+        ...state,
+        lots: state.lots.map((lot) => {
+          if (lot.id === action.id) {
+            return {
+              ...lot,
+              isFavorite: false
             };
           }
           return lot;
@@ -179,22 +217,53 @@ function changeLotPrice(lot) {
   };
 }
 
+function favoriteLot(id) {
+  return {
+    type: FAVORITE_LOT,
+    id
+  };
+}
+
+function unFavoriteLot(id) {
+  return {
+    type: UNFAVORITE_LOT,
+    id
+  };
+}
+
+
+
+
 const store = Redux.createStore(Redux.combineReducers({
   clock: clockReducer,
   auction: auctionReducer
 }));
 
 
-function renderView(state) {
-  ReactDOM.render(<App state={state} />, document.getElementById('root'));
+function renderView(store) {
+  const state = store.getState();
+  function favorite(id) {
+    Api.post(`/lots/${id}/favorite`).then(() => {
+      store.dispatch(favoriteLot(id));
+    });
+
+  }
+  function unFavorite(id) {
+    Api.post(`/lots/${id}/unfavorite`).then(() => {
+      store.dispatch(unFavoriteLot(id));
+    });
+
+  }
+
+  ReactDOM.render(<App state={state} favorite={favorite} unFavorite={unFavorite} />, document.getElementById('root'));
 }
 
 store.subscribe(() => {
-  renderView(store.getState());
+  renderView(store);
 });
 
 // Init app
-renderView(store.getState());
+renderView(store);
 
 // setTimeout(() => {
 //   store.dispatch(setTime(new Date()));
