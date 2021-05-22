@@ -71,7 +71,7 @@ function Favorite({ isFavorite, favorite, unFavorite }) {
  * @param { array } { lots }
  * @return { HTMLDivElement } list of lots components
  */
-export function Lots({ lots, favorite, unFavorite }) {
+export function Lots({ lots }) {
   if (!lots || (Array.isArray(lots) && !lots.length)) {
     return <Loading />;
   }
@@ -79,23 +79,92 @@ export function Lots({ lots, favorite, unFavorite }) {
   return (
     <div className="lots">
       {lots.map((lot) => (
-        <Lot lot={lot} favorite={favorite} unFavorite={unFavorite} key={lot.id} />
+        <LotContainer lot={lot} key={lot.id} />
       ))}
     </div>
   );
 }
+
+function connect(WrappedComponent, mapStateToProps = null, mapDispatchToProps = null) {
+  return function (props) {
+    return (<StoreContext.Consumer>
+      {(store) => {
+        return React.createElement(class extends React.Component {
+
+          componentDidMount() {
+            this.unsibscribe = store.subscribe(this.handleChange.bind(this));
+          }
+
+          componentWillUnmount() {
+            this.unsibscribe();
+          }
+
+          handleChange() {
+            this.forceUpdate();
+          }
+
+          render() {
+            const state = store.getState();
+            const dispatch = store.dispatch;
+            const stateToProps = mapStateToProps ? mapStateToProps(state) : {};
+            const dispatchToProps = mapDispatchToProps ? mapDispatchToProps(dispatch) : {};
+
+            return <WrappedComponent {...this.props} {...stateToProps} {...dispatchToProps} />;
+          }
+
+        }, props);
+
+      }}
+    </StoreContext.Consumer>);
+  };
+}
+
+function clockMapStateToProps(state) {
+  return {
+    time: state.clock.time
+  };
+}
+
+function lotsMapStateToProps(state) {
+  return {
+    lots: state.auction.lots
+  };
+}
+
+function lotMapDispatchToProps(dispatch) {
+  return {
+    favorite: (id) => {
+      Api.post(`/lots/${id}/favorite`).then(() => {
+        dispatch(favoriteLot(id));
+      });
+    },
+    unFavorite: (id) => {
+      Api.post(`/lots/${id}/unfavorite`).then(() => {
+        dispatch(unFavoriteLot(id));
+      });
+    }
+  };
+}
+
+
+const ClockContainer = connect(Clock, clockMapStateToProps);
+const LotsContainer = connect(Lots, lotsMapStateToProps);
+const LotContainer = connect(Lot, null, lotMapDispatchToProps);
+
+
+const StoreContext = React.createContext();
 
 /**
  * Creates container and append components that needs to be rendered
  * @param {object} { state of app}
  * @return {HTMLDivElement } App with components
  */
-export function App({ state, favorite, unFavorite }) {
+export function App() {
   return (
     <div className="app">
       <Header />
-      <Clock time={state.clock.time} />
-      <Lots lots={state.auction.lots} favorite={favorite} unFavorite={unFavorite} />
+      <ClockContainer />
+      <LotsContainer />
     </div>
   );
 }
@@ -231,9 +300,6 @@ function unFavoriteLot(id) {
   };
 }
 
-
-
-
 const store = Redux.createStore(Redux.combineReducers({
   clock: clockReducer,
   auction: auctionReducer
@@ -241,38 +307,20 @@ const store = Redux.createStore(Redux.combineReducers({
 
 
 function renderView(store) {
-  const state = store.getState();
-  function favorite(id) {
-    Api.post(`/lots/${id}/favorite`).then(() => {
-      store.dispatch(favoriteLot(id));
-    });
-
-  }
-  function unFavorite(id) {
-    Api.post(`/lots/${id}/unfavorite`).then(() => {
-      store.dispatch(unFavoriteLot(id));
-    });
-
-  }
-
-  ReactDOM.render(<App state={state} favorite={favorite} unFavorite={unFavorite} />, document.getElementById('root'));
+  ReactDOM.render(
+    <StoreContext.Provider value={store}>
+      <App />
+    </StoreContext.Provider>,
+    document.getElementById('root'));
 }
-
-store.subscribe(() => {
-  renderView(store);
-});
 
 // Init app
 renderView(store);
 
-// setTimeout(() => {
-//   store.dispatch(setTime(new Date()));
-// }, 2500);
-
 // Change Clock time
 setInterval(() => {
   store.dispatch(setTime(new Date()));
-}, 3000);
+}, 1000);
 
 // Fetch lots
 Api.get('/lots').then((lots) => {
