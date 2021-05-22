@@ -3,7 +3,6 @@ import { VDom } from './services/VDom.js';
 // import { App } from './containers/App.js';
 
 
-
 /**
  * Returns loading component
  * @return { HTMLDivElement } loading component
@@ -64,7 +63,6 @@ function Favorite({ isFavorite, favorite, unFavorite }) {
   return isFavorite ? favoriteButton : unFavoriteButton;
 }
 
-
 /**
  * Returns list of lot components
  * Shows loading component if there are no lots
@@ -85,39 +83,6 @@ export function Lots({ lots }) {
   );
 }
 
-function connect(WrappedComponent, mapStateToProps = null, mapDispatchToProps = null) {
-  return function (props) {
-    return (<StoreContext.Consumer>
-      {(store) => {
-        return React.createElement(class extends React.Component {
-
-          componentDidMount() {
-            this.unsibscribe = store.subscribe(this.handleChange.bind(this));
-          }
-
-          componentWillUnmount() {
-            this.unsibscribe();
-          }
-
-          handleChange() {
-            this.forceUpdate();
-          }
-
-          render() {
-            const state = store.getState();
-            const dispatch = store.dispatch;
-            const stateToProps = mapStateToProps ? mapStateToProps(state) : {};
-            const dispatchToProps = mapDispatchToProps ? mapDispatchToProps(dispatch) : {};
-
-            return <WrappedComponent {...this.props} {...stateToProps} {...dispatchToProps} />;
-          }
-
-        }, props);
-
-      }}
-    </StoreContext.Consumer>);
-  };
-}
 
 function clockMapStateToProps(state) {
   return {
@@ -131,28 +96,14 @@ function lotsMapStateToProps(state) {
   };
 }
 
-function lotMapDispatchToProps(dispatch) {
-  return {
-    favorite: (id) => {
-      Api.post(`/lots/${id}/favorite`).then(() => {
-        dispatch(favoriteLot(id));
-      });
-    },
-    unFavorite: (id) => {
-      Api.post(`/lots/${id}/unfavorite`).then(() => {
-        dispatch(unFavoriteLot(id));
-      });
-    }
-  };
-}
+const lotMapDispatchToProps = {
+  favorite: favoriteLotAsync,
+  unFavorite: unFavoriteAasync
+};
 
-
-const ClockContainer = connect(Clock, clockMapStateToProps);
-const LotsContainer = connect(Lots, lotsMapStateToProps);
-const LotContainer = connect(Lot, null, lotMapDispatchToProps);
-
-
-const StoreContext = React.createContext();
+const ClockContainer = ReactRedux.connect(clockMapStateToProps)(Clock);
+const LotsContainer = ReactRedux.connect(lotsMapStateToProps)(Lots);
+const LotContainer = ReactRedux.connect(null, lotMapDispatchToProps)(Lot);
 
 /**
  * Creates container and append components that needs to be rendered
@@ -300,17 +251,38 @@ function unFavoriteLot(id) {
   };
 }
 
-const store = Redux.createStore(Redux.combineReducers({
-  clock: clockReducer,
-  auction: auctionReducer
-}));
+function favoriteLotAsync(id) {
+  return (dispatch, getState, Api) => {
+    Api.post(`/lots/${id}/favorite`).then(() => {
+      dispatch(favoriteLot(id));
+    });
+  };
+}
+
+function unFavoriteAasync(id) {
+  return (dispatch, getState, api) => {
+    api.post(`/lots/${id}/unfavorite`).then(() => {
+      dispatch(unFavoriteLot(id));
+    });
+  };
+}
+
+const thunk = ReduxThunk.default;
+
+const store = Redux.createStore(
+  Redux.combineReducers({
+    clock: clockReducer,
+    auction: auctionReducer
+  }),
+  Redux.applyMiddleware(thunk.withExtraArgument(Api))
+);
 
 
 function renderView(store) {
   ReactDOM.render(
-    <StoreContext.Provider value={store}>
+    <ReactRedux.Provider store={store}>
       <App />
-    </StoreContext.Provider>,
+    </ReactRedux.Provider>,
     document.getElementById('root'));
 }
 
