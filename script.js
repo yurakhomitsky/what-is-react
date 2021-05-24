@@ -19,34 +19,7 @@ export function Clock({ time }) {
   return <div className="clock">{time.toLocaleTimeString()}</div>;
 }
 
-class ClockContainer extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      time: new Date()
-    };
-    this.tick = this.tick.bind(this);
-  }
-
-  tick() {
-    this.setState({
-      time: new Date()
-    });
-  }
-
-  componentDidMount() {
-    this.interval = setInterval(this.tick, 1000);
-  }
-
-  componentWillUnmount() {
-    clearInterval(this.interval);
-  }
-  render() {
-    return <Clock time={this.state.time} />;
-  }
-}
-
-function ClockContainer2() {
+function ClockContainer() {
   const [time, setTime] = React.useState(new Date());
   const tick = () => {
     setTime(new Date());
@@ -149,7 +122,6 @@ export function App() {
     <div className="app">
       <Header />
       <ClockContainer />
-      <ClockContainer2 />
       <LotsContainer />
     </div>
   );
