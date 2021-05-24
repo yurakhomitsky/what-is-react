@@ -13,11 +13,52 @@ export function Loading() {
 
 /**
  * Returns clock component
- * @param { object } { time }
  * @return { HTMLDivElement } clock component
  */
 export function Clock({ time }) {
   return <div className="clock">{time.toLocaleTimeString()}</div>;
+}
+
+class ClockContainer extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      time: new Date()
+    };
+    this.tick = this.tick.bind(this);
+  }
+
+  tick() {
+    this.setState({
+      time: new Date()
+    });
+  }
+
+  componentDidMount() {
+    this.interval = setInterval(this.tick, 1000);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.interval);
+  }
+  render() {
+    return <Clock time={this.state.time} />;
+  }
+}
+
+function ClockContainer2() {
+  const [time, setTime] = React.useState(new Date());
+  const tick = () => {
+    setTime(new Date());
+  };
+
+  React.useEffect(() => {
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+
+  return <Clock time={time} />;
 }
 
 /**
@@ -84,12 +125,6 @@ export function Lots({ lots }) {
 }
 
 
-function clockMapStateToProps(state) {
-  return {
-    time: state.clock.time
-  };
-}
-
 function lotsMapStateToProps(state) {
   return {
     lots: state.auction.lots
@@ -98,10 +133,9 @@ function lotsMapStateToProps(state) {
 
 const lotMapDispatchToProps = {
   favorite: favoriteLotAsync,
-  unFavorite: unFavoriteAasync
+  unFavorite: unFavoriteAsync
 };
 
-const ClockContainer = ReactRedux.connect(clockMapStateToProps)(Clock);
 const LotsContainer = ReactRedux.connect(lotsMapStateToProps)(Lots);
 const LotContainer = ReactRedux.connect(null, lotMapDispatchToProps)(Lot);
 
@@ -115,6 +149,7 @@ export function App() {
     <div className="app">
       <Header />
       <ClockContainer />
+      <ClockContainer2 />
       <LotsContainer />
     </div>
   );
@@ -136,29 +171,12 @@ const stream = {
     }
   }
 };
-
-// States
-const clockInitialState = {
-  time: new Date()
-};
-
-function clockReducer(state = clockInitialState, action) {
-
-  switch (action.type) {
-    case SET_TIME:
-      return {
-        ...state,
-        time: action.time
-      };
-    default: return state;
-  }
-}
+;
 
 const auctionInitialState = {
   lots: null
 };
 
-const SET_TIME = 'SET_TIME';
 const SET_LOTS = 'SET_LOTS';
 const CHANGE_LOT_PRICE = 'CHANGE_LOT_PRICE';
 const FAVORITE_LOT = 'FAVORITE_LOT';
@@ -216,13 +234,6 @@ function auctionReducer(state = auctionInitialState, action) {
   }
 }
 
-function setTime(time) {
-  return {
-    type: SET_TIME,
-    time
-  };
-}
-
 function setLots(lots) {
   return {
     type: SET_LOTS,
@@ -259,7 +270,7 @@ function favoriteLotAsync(id) {
   };
 }
 
-function unFavoriteAasync(id) {
+function unFavoriteAsync(id) {
   return (dispatch, getState, api) => {
     api.post(`/lots/${id}/unfavorite`).then(() => {
       dispatch(unFavoriteLot(id));
@@ -271,7 +282,6 @@ const thunk = ReduxThunk.default;
 
 const store = Redux.createStore(
   Redux.combineReducers({
-    clock: clockReducer,
     auction: auctionReducer
   }),
   Redux.applyMiddleware(thunk.withExtraArgument(Api))
@@ -289,10 +299,6 @@ function renderView(store) {
 // Init app
 renderView(store);
 
-// Change Clock time
-setInterval(() => {
-  store.dispatch(setTime(new Date()));
-}, 1000);
 
 // Fetch lots
 Api.get('/lots').then((lots) => {
