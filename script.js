@@ -202,85 +202,7 @@ const lotMapDispatchToProps = {
 };
 
 
-const RouterContext = React.createContext();
-
-function Router({ history, children }) {
-  const [location, setLocation] = React.useState(history.location);
-
-  React.useEffect(() => {
-    return history.listen((location) => {
-      setLocation(location);
-    });
-    // providing setLocation as dependecy that means Effect will execute only once
-    // since referrence will not change
-  }, [setLocation]);
-
-  return (
-    <RouterContext.Provider value={{ location, history }} children={children} />
-  );
-}
-
-function createBrowserHistory() {
-  return {
-    get location() {
-      const state = window.history.state;
-      return state ? state.location : window.location.pathname;
-    },
-    push(location) {
-      const state = { location };
-      window.history.pushState(state, '', location);
-      window.dispatchEvent(new PopStateEvent('popstate', { state: false }));
-    },
-    createHref(path) {
-      return path;
-    },
-    listen(listener) {
-      const stateListener = (event) => {
-        const state = event.state;
-        listener(state ? state.location : window.location.pathname);
-      };
-      window.addEventListener('popstate', stateListener, false);
-      return () => {
-        window.removeEventListener('popstate', stateListener);
-      };
-    }
-  };
-
-}
-
-function BrowserRouter({ children }) {
-  const history = createBrowserHistory();
-  return <Router history={history} children={children}></Router>;
-}
-
-function createHashHistory() {
-  return {
-    get location() {
-      return window.location.hash.slice(1) || '/';
-    },
-    push(location) {
-      window.location.hash = location;
-    },
-    createHref(path) {
-      return '#' + path;
-    },
-    listen(listener) {
-      const hashListener = () => {
-        listener(window.location.hash.slice(1));
-      };
-      window.addEventListener('hashchange', hashListener, false);
-      return () => {
-        window.removeEventListener('hashchange', hashListener);
-      };
-    }
-  };
-
-}
-
-function HashRouter({ children }) {
-  const history = createHashHistory();
-  return <Router history={history} children={children}></Router>;
-}
+const { HashRouter, Switch, Route, Link, useParams } = ReactRouterDOM;
 
 function Nav() {
   return (
@@ -303,13 +225,13 @@ function Content() {
       <Route path="/lots" exact>
         <LotsPage />
       </Route>
-      <Route path="/lots/(?<id>[\w-]+)" exact>
+      <Route path="/lots/:id" exact>
         <LotPage />
       </Route>
       <Route path="/help" exact>
         <HelpPage />
       </Route>
-      <Route path=".*" >
+      <Route path="*" >
         <NotFound />
       </Route>
     </Switch>
@@ -370,56 +292,6 @@ function LotPage() {
       <p>Lot description</p>
     </Page>
   );
-}
-
-function Link({ to, children, ...options }) {
-  const { history } = React.useContext(RouterContext);
-  const href = to ? history.createHref(to) : '';
-  const onClick = (event) => {
-    event.preventDefault();
-    history.push(to);
-  };
-
-  return <a href={href} {...options} onClick={onClick}>{children}</a>;
-}
-
-function matchPath(location, params) {
-  const { exact, path } = params;
-  const regexp = new RegExp(
-    exact
-      ? '^' + path + '$'
-      : '^' + path + '(/.*)?'
-  );
-  return regexp.exec(location);
-}
-
-function useParams() {
-  const router = React.useContext(RouterContext);
-
-  return router.match.groups;
-}
-
-function Route(props) {
-  const value = React.useContext(RouterContext);
-  const { location } = value;
-  const { children, computedMatch } = props;
-
-  const match = computedMatch ? computedMatch : matchPath(location, props);
-  if (match) {
-    return <RouterContext.Provider value={{ ...value, match }} children={children} />;
-  }
-  return null;
-}
-
-function Switch({ children }) {
-  const { location } = React.useContext(RouterContext);
-  for (const child of children) {
-    const match = matchPath(location, child.props);
-    if (match) {
-      return React.cloneElement(child, { computedMatch: match });
-    }
-  }
-  return null;
 }
 
 /**
