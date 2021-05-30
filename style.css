@@ -9,6 +9,48 @@ body {
 }
 
 .header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.header .logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
+.header nav {
+  margin-left: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header nav yl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header nav ul li {
+  margin: 0 15px 0 0;
+  padding: 0;
+  display: inline-block;
+}
+
+.header nav ul li:last-child {
+  margin: 0;
+}
+
+a {
+  color: #000;
+}
+
+.page {
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   margin-bottom: 10px;
 }
 

@@ -4,22 +4,27 @@ export const Api = {
       case '/lots':
         return new Promise((resolve, reject) => {
           setTimeout(() => {
-            resolve([
-              {
-                id: 1,
-                name: 'Apple',
-                description: 'Apple description',
-                price: 16,
-                isFavorite: true
-              },
-              {
-                id: 2,
-                name: 'Orange',
-                description: 'Orange descriptions',
-                price: 4,
-                isFavorite: false
-              }
-            ]);
+            if (Math.random() > 0.5) {
+              resolve([
+                {
+                  id: 1,
+                  name: 'Apple',
+                  description: 'Apple description',
+                  price: 16,
+                  isFavorite: true
+                },
+                {
+                  id: 2,
+                  name: 'Orange',
+                  description: 'Orange descriptions',
+                  price: 4,
+                  isFavorite: false
+                }
+              ]);
+            } else {
+              reject({ message: 'Opps!' });
+            }
+
           }, 2000);
         });
       default:

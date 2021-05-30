@@ -1,6 +1,4 @@
 import { Api } from './services/Api.js';
-import { VDom } from './services/VDom.js';
-// import { App } from './containers/App.js';
 
 const stream = {
   subscribe(channel, listener) {
@@ -130,7 +128,9 @@ function loadLots() {
       .then((lots) => {
         dispatch(lotsLoadingSuccess(lots));
       })
-      .catch((error) => dispatch(lotsLoadingError(error.message)));
+      .catch((error) => {
+        dispatch(lotsLoadingError(error.message));
+      });
   };
 }
 
@@ -201,6 +201,227 @@ const lotMapDispatchToProps = {
   }
 };
 
+
+const RouterContext = React.createContext();
+
+function Router({ history, children }) {
+  const [location, setLocation] = React.useState(history.location);
+
+  React.useEffect(() => {
+    return history.listen((location) => {
+      setLocation(location);
+    });
+    // providing setLocation as dependecy that means Effect will execute only once
+    // since referrence will not change
+  }, [setLocation]);
+
+  return (
+    <RouterContext.Provider value={{ location, history }} children={children} />
+  );
+}
+
+function createBrowserHistory() {
+  return {
+    get location() {
+      const state = window.history.state;
+      return state ? state.location : window.location.pathname;
+    },
+    push(location) {
+      const state = { location };
+      window.history.pushState(state, '', location);
+      window.dispatchEvent(new PopStateEvent('popstate', { state: false }));
+    },
+    createHref(path) {
+      return path;
+    },
+    listen(listener) {
+      const stateListener = (event) => {
+        const state = event.state;
+        listener(state ? state.location : window.location.pathname);
+      };
+      window.addEventListener('popstate', stateListener, false);
+      return () => {
+        window.removeEventListener('popstate', stateListener);
+      };
+    }
+  };
+
+}
+
+function BrowserRouter({ children }) {
+  const history = createBrowserHistory();
+  return <Router history={history} children={children}></Router>;
+}
+
+function createHashHistory() {
+  return {
+    get location() {
+      return window.location.hash.slice(1) || '/';
+    },
+    push(location) {
+      window.location.hash = location;
+    },
+    createHref(path) {
+      return '#' + path;
+    },
+    listen(listener) {
+      const hashListener = () => {
+        listener(window.location.hash.slice(1));
+      };
+      window.addEventListener('hashchange', hashListener, false);
+      return () => {
+        window.removeEventListener('hashchange', hashListener);
+      };
+    }
+  };
+
+}
+
+function HashRouter({ children }) {
+  const history = createHashHistory();
+  return <Router history={history} children={children}></Router>;
+}
+
+function Nav() {
+  return (
+    <nav>
+      <ul>
+        <li><Link to="/">Home</Link></li>
+        <li><Link to="/lots">Lots</Link></li>
+        <li><Link to="/help">Help</Link></li>
+      </ul>
+    </nav>
+  );
+}
+
+function Content() {
+  return (
+    <Switch>
+      <Route path="/" exact>
+        <HomePage />
+      </Route>
+      <Route path="/lots" exact>
+        <LotsPage />
+      </Route>
+      <Route path="/lots/(?<id>[\w-]+)" exact>
+        <LotPage />
+      </Route>
+      <Route path="/help" exact>
+        <HelpPage />
+      </Route>
+      <Route path=".*" >
+        <NotFound />
+      </Route>
+    </Switch>
+  );
+}
+
+function NotFound() {
+  return <div>Not found</div>;
+}
+
+function Page({ children, title }) {
+  return (
+    <section className="page">
+      <h1>{title}</h1>
+      {children}
+    </section>
+  );
+}
+
+function HomePage() {
+  return (
+    <Page title="Welcome">
+      <p>Welcome to auction!</p>
+      <p>View <Link to="/lots">Lots</Link> or read our <Link to="/help">help</Link></p>
+    </Page>
+  );
+}
+
+function HelpPage() {
+  return (
+    <Page title="Help">
+      <p>Go to <Link to="/lots">Lots</Link></p>
+      <ol>
+        <li>
+          Choose an interesting lot
+        </li>
+        <li>Add the lot to favorite list</li>
+      </ol>
+      <p>Back to <Link to="/">Home</Link></p>
+    </Page>
+  );
+}
+
+function LotsPage() {
+  return (
+    <div>
+      <ClockContainer />
+      <LotsContainer />
+    </div>
+  );
+}
+
+function LotPage() {
+  const params = useParams();
+
+  return (
+    <Page title={'Lot ' + '#' + params.id}>
+      <p>Lot description</p>
+    </Page>
+  );
+}
+
+function Link({ to, children, ...options }) {
+  const { history } = React.useContext(RouterContext);
+  const href = to ? history.createHref(to) : '';
+  const onClick = (event) => {
+    event.preventDefault();
+    history.push(to);
+  };
+
+  return <a href={href} {...options} onClick={onClick}>{children}</a>;
+}
+
+function matchPath(location, params) {
+  const { exact, path } = params;
+  const regexp = new RegExp(
+    exact
+      ? '^' + path + '$'
+      : '^' + path + '(/.*)?'
+  );
+  return regexp.exec(location);
+}
+
+function useParams() {
+  const router = React.useContext(RouterContext);
+
+  return router.match.groups;
+}
+
+function Route(props) {
+  const value = React.useContext(RouterContext);
+  const { location } = value;
+  const { children, computedMatch } = props;
+
+  const match = computedMatch ? computedMatch : matchPath(location, props);
+  if (match) {
+    return <RouterContext.Provider value={{ ...value, match }} children={children} />;
+  }
+  return null;
+}
+
+function Switch({ children }) {
+  const { location } = React.useContext(RouterContext);
+  for (const child of children) {
+    const match = matchPath(location, child.props);
+    if (match) {
+      return React.cloneElement(child, { computedMatch: match });
+    }
+  }
+  return null;
+}
+
 /**
  * Returns loading component
  * @return { HTMLDivElement } loading component
@@ -248,6 +469,7 @@ export function Header() {
   return (
     <header className="header">
       <Logo />
+      <Nav></Nav>
     </header>
   );
 }
@@ -266,7 +488,9 @@ export function Lot({ lot, subscribe, favorite, unFavorite }) {
   return (
     <article className={`lot ${lot.isFavorite ? 'favorite' : ''}`}>
       <div className="price">{lot.price}</div>
-      <h1>{lot.name}</h1>
+      <h1>
+        <Link to={'/lots/' + lot.id}>{lot.name}</Link>
+      </h1>
       <p>{lot.description}</p>
       <Favorite isFavorite={lot.isFavorite} favorite={favorite.bind(null, lot.id)} unFavorite={unFavorite.bind(null, lot.id)} />
     </article>
@@ -286,6 +510,7 @@ function Favorite({ isFavorite, favorite, unFavorite }) {
  * @return { HTMLDivElement } list of lots components
  */
 export function Lots({ lots, loading, loaded, error, loadLots }) {
+
   React.useEffect(() => {
     if (!loaded && !loading && !error) {
       loadLots();
@@ -293,7 +518,7 @@ export function Lots({ lots, loading, loaded, error, loadLots }) {
   }, [loaded, loading, error]);
 
   if (error) {
-    return 'Error!';
+    return <button onClick={loadLots}>Retry</button>;
   }
 
   if (loading) {
@@ -323,11 +548,12 @@ const LotContainer = ReactRedux.connect(null, lotMapDispatchToProps)(Lot);
  */
 export function App() {
   return (
-    <div className="app">
-      <Header />
-      <ClockContainer />
-      <LotsContainer />
-    </div>
+    <HashRouter>
+      <div className="app">
+        <Header />
+        <Content></Content>
+      </div>
+    </HashRouter>
   );
 }
 
